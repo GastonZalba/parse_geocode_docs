@@ -1,6 +1,5 @@
 const fs = require('fs');
 const { createInterface } = require('readline');
-const { once } = require('events');
 const { performance } = require('perf_hooks');
 const https = require('https');
 
@@ -98,8 +97,6 @@ const LIMIT_LINES = args[1] || null; // null to process the entire file
                 console.log(`__${counterLinesReaded} lines__`);
 
         };
-
-        await once(rl, 'close');
 
         // timestamp on end
         const t1 = performance.now();
