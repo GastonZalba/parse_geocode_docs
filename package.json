@@ -1,0 +1,18 @@
+{
+  "name": "parse_geocode_docs",
+  "version": "1.0.0",
+  "description": "Parse big files and process the values using Nomitamim to geocode cities.",
+  "main": "cli.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "Gastón Zalba",
+  "license": "ISC",
+  "keywords": [
+    "tabs",
+    "nominatim",
+    "geocoding",
+    "cli",
+    "terminal"
+  ]
+}
