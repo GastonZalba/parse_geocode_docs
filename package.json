@@ -3,6 +3,10 @@
   "version": "1.0.0",
   "description": "Parse big files and process the values using Nomitamim to geocode cities.",
   "main": "cli.js",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/GastonZalba/parse_geocode_docs.git"
+  },
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
