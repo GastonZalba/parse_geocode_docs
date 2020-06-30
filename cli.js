@@ -9,7 +9,7 @@ const args = process.argv.slice(2);
 // Column number (starts in 0)
 const DATE = 0;
 const COUNTRY = 4;
-const CITY = 5;
+const CITY = 5; // Presumably empty cell to fill
 const LAT = 6;
 const LON = 7;
 
@@ -18,7 +18,6 @@ const VERBOSE = false;
 
 // Stop processing on...
 const LIMIT_LINES = args[1] || null; // null to process the entire file
-
 
 (async function processLineByLine() {
 
@@ -29,6 +28,9 @@ const LIMIT_LINES = args[1] || null; // null to process the entire file
         let counterIncomplete = 0;
         const file = args[0];
 
+        if (!file)
+            throw new Error('The filename argument to process is missing.');
+
         console.log('Start!');
 
         const outputFile = fs.createWriteStream('processed_' + file);
@@ -38,7 +40,7 @@ const LIMIT_LINES = args[1] || null; // null to process the entire file
 
         // Read line by line
         const rl = createInterface({
-            input: fs.createReadStream(file, { 'encoding': 'utf8' }),
+            input: awaitfs.createReadStream(file, { 'encoding': 'utf8' }),
             output: (VERBOSE) ? process.stdout : false,
             crlfDelay: Infinity
         });
@@ -106,7 +108,7 @@ const LIMIT_LINES = args[1] || null; // null to process the entire file
         console.log(`Argentina: ${counterCountry}. Incomplete: ${counterIncomplete}`);
 
     } catch (err) {
-        console.error(err);
+        console.error(err.message);
     }
 
 })()
