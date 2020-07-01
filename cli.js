@@ -12,6 +12,7 @@ const COUNTRY = 4;
 const CITY = 5; // Presumably empty cell to fill
 const LAT = 6;
 const LON = 7;
+const COUNTRY_TO_MATCH = 'Argentina';
 
 // Show complete output in terminal (It slows down the processing)
 const VERBOSE = false;
@@ -29,7 +30,7 @@ const LIMIT_LINES = args[1] || null; // null to process the entire file
         const file = args[0];
 
         if (!file)
-            throw new Error('The filename argument to process is missing.');
+            throw new Error('The filename argument is missing.');
 
         console.log('Start!');
 
@@ -40,7 +41,7 @@ const LIMIT_LINES = args[1] || null; // null to process the entire file
 
         // Read line by line
         const rl = createInterface({
-            input: awaitfs.createReadStream(file, { 'encoding': 'utf8' }),
+            input: fs.createReadStream(file, { 'encoding': 'utf8' }),
             output: (VERBOSE) ? process.stdout : false,
             crlfDelay: Infinity
         });
@@ -58,7 +59,7 @@ const LIMIT_LINES = args[1] || null; // null to process the entire file
 
             let _country = columns[COUNTRY];
 
-            if (_country == 'Argentina') {
+            if (_country == COUNTRY_TO_MATCH) {
 
                 counterCountry++;
 
@@ -71,13 +72,22 @@ const LIMIT_LINES = args[1] || null; // null to process the entire file
                 if (_lat && _lon && _lat !== 'N/A' && _lon !== 'N/A' && _city === 'N/A') {
 
                     counterIncomplete++;
-                    let city = await getGeoData(`/reverse?lat=${_lat}&lon=${_lon}&format=json`);
-                    columns[CITY] = city;
-                    
-                    // Extra column
-                    columns.push('-completed-');
+                    let city = await getCityFromLatLon({ "lat": _lat, "lon": _lon });
 
-                    console.log('Filled:', city, [_lat, _lon]);
+                    if (city) {
+
+                        columns[CITY] = city;
+
+                        // Extra column
+                        columns.push('-completed-');
+
+                        console.log('Filled:', city, [_lat, _lon]);
+
+                    } else {
+                        // Extra column
+                        columns.push('-failed to fill-');
+                        console.log('Failed to fill:', [_lat, _lon]);
+                    }
 
                 } else {
 
@@ -105,7 +115,7 @@ const LIMIT_LINES = args[1] || null; // null to process the entire file
 
         console.log('Finished!');
         console.log(`Readed ${counterLinesReaded} lines in ${((t1 - t0) / 1000).toFixed(2)} seconds`);
-        console.log(`Argentina: ${counterCountry}. Incomplete: ${counterIncomplete}`);
+        console.log(`${COUNTRY_TO_MATCH}: ${counterCountry}. Incomplete: ${counterIncomplete}`);
 
     } catch (err) {
         console.error(err.message);
@@ -114,22 +124,38 @@ const LIMIT_LINES = args[1] || null; // null to process the entire file
 })()
 
 
+const getCityFromLatLon = async latLon => {
 
-// Store parameters to avoid multiples requests
-let storedValues = {};
+    let data = await getGeoDataFromLatLon(latLon);
 
-const getGeoData = (path) => {
+    if (!data) return false;
+
+    return data.address.city
+        || data.address.town
+        || data.address.county
+        || data.address.village
+        || data.address.state_district
+        || false;
+
+}
+
+const getGeoDataFromLatLon = (latLon) => {
+
+    // String to identify this lat and long
+    let strLatLon = JSON.stringify(latLon);
+
+    let savedValue = getSavedValues(strLatLon);
 
     // If the value was already searched, get that
-    if (storedValues[path]) {
-        return storedValues[path];
-    }
+    if (savedValue) return savedValue;
+
+    const { lat, lon } = latLon;
 
     return new Promise((resolve, reject) => {
 
         let options = {
             hostname: 'nominatim.openstreetmap.org',
-            path: path,
+            path: `/reverse?lat=${lat}&lon=${lon}&format=json`,
             port: 443,
             headers: { 'User-Agent': 'Mozilla/5.0' } // Required for Nominatim
         }
@@ -138,14 +164,9 @@ const getGeoData = (path) => {
 
             res.setEncoding('utf8');
             res.on('data', (d) => {
-
                 let json = JSON.parse(d);
-
-                let city = json.address.city || json.address.town || json.address.county || json.address.village || json.address.state_district;
-
-                // Store the value
-                storedValues[path] = city;
-                resolve(city);
+                saveValues(strLatLon, json);
+                resolve(json);
             });
 
         }).on('error', (err) => {
@@ -154,8 +175,17 @@ const getGeoData = (path) => {
         });
 
     }).catch(err => {
-        console.error(err)
+        console.error(err.message)
         return false;
     })
 
 }
+
+
+// Store parameters to avoid repeated requests
+let storedValues = {};
+const saveValues = (strLatLon, data) => {
+    storedValues[strLatLon] = data;
+}
+
+const getSavedValues = (strLatLon) => (storedValues[strLatLon]) ? storedValues[strLatLon] : false;
